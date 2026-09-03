@@ -363,8 +363,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final email = TextEditingController(text: "admin@hrms.com");
-  final password = TextEditingController(text: "admin123");
+  final email = TextEditingController();
+  final password = TextEditingController();
   bool loading = false;
 
   Future<void> login() async {
@@ -434,8 +434,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  const Text("HR: admin@hrms.com / admin123"),
-                  const Text("Employee: employee@hrms.com / employee123"),
                 ],
               ),
             ),
@@ -730,11 +728,17 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
       return "Not checked in";
     }
 
-    if ((record["check_out"] ?? "").toString().isNotEmpty) {
-      return "Checked out";
+    final checkOut = record["check_out"];
+    if (checkOut != null && checkOut.toString().isNotEmpty) {
+      return "Checked out at ${formatDashboardTime(checkOut)}";
     }
 
-    return "Checked in";
+    final checkIn = record["check_in"];
+    if (checkIn != null && checkIn.toString().isNotEmpty) {
+      return "Checked in at ${formatDashboardTime(checkIn)}";
+    }
+
+    return "Not checked in";
   }
 
   int getPendingLeaves(List<dynamic> records) {
@@ -817,11 +821,6 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
             final status = getAttendanceStatus(today);
             final pendingLeaves = getPendingLeaves(leaveSnapshot.data!);
 
-            final canCheckIn = today == null;
-            final canCheckOut =
-                today != null &&
-                (today["check_out"] ?? "").toString().isEmpty;
-
             return SingleChildScrollView(
               padding: const EdgeInsets.all(25),
               child: Column(
@@ -847,7 +846,7 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
                       StatCard(
                         title: "Today's Attendance",
                         value: status,
-                        icon: status == "Checked in"
+                        icon: status.startsWith("Checked")
                             ? Icons.check_circle
                             : Icons.access_time,
                       ),
@@ -859,54 +858,7 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
                     ],
                   ),
                   const SizedBox(height: 25),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Today's Attendance",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          if (today != null) ...[
-                            Text(
-                              "Check In: ${formatDashboardTime(today["check_in"])}",
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              "Check Out: ${formatDashboardTime(today["check_out"])}",
-                            ),
-                            const SizedBox(height: 15),
-                          ],
-                          Row(
-                            children: [
-                              FilledButton.icon(
-                                onPressed: canCheckIn
-                                    ? () => attendanceAction(true)
-                                    : null,
-                                icon: const Icon(Icons.login),
-                                label: const Text("Check In"),
-                              ),
-                              const SizedBox(width: 10),
-                              OutlinedButton.icon(
-                                onPressed: canCheckOut
-                                    ? () => attendanceAction(false)
-                                    : null,
-                                icon: const Icon(Icons.logout),
-                                label: const Text("Check Out"),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
@@ -1095,306 +1047,6 @@ class DepartmentsPage extends StatelessWidget {
   }
 }
 
-class _EmployeeFormDialog extends StatefulWidget {
-  final Map<String, dynamic>? employee;
-  final bool isEdit;
-  final List<dynamic> departments;
-  final int? initialDepartmentId;
-
-  const _EmployeeFormDialog({
-    required this.employee,
-    required this.isEdit,
-    required this.departments,
-    required this.initialDepartmentId,
-  });
-
-  @override
-  State<_EmployeeFormDialog> createState() => _EmployeeFormDialogState();
-}
-
-class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
-  late final TextEditingController codeController;
-  late final TextEditingController nameController;
-  late final TextEditingController emailController;
-  late final TextEditingController phoneController;
-  late final TextEditingController designationController;
-  late final TextEditingController passwordController;
-
-  late DateTime joiningDate;
-  late int? selectedDepartmentId;
-  bool saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    final employee = widget.employee;
-
-    codeController = TextEditingController(
-      text: employee?["employee_code"] ?? "",
-    );
-    nameController = TextEditingController(
-      text: employee?["name"] ?? "",
-    );
-    emailController = TextEditingController(
-      text: employee?["email"] ?? "",
-    );
-    phoneController = TextEditingController(
-      text: employee?["phone"] ?? "",
-    );
-    designationController = TextEditingController(
-      text: employee?["designation"] ?? "",
-    );
-    passwordController = TextEditingController();
-
-    joiningDate = employee != null
-        ? DateTime.parse(employee["joining_date"])
-        : DateTime.now();
-
-    selectedDepartmentId = widget.initialDepartmentId;
-  }
-
-  String formatDate(DateTime date) {
-    return "${date.year.toString().padLeft(4, "0")}-"
-        "${date.month.toString().padLeft(2, "0")}-"
-        "${date.day.toString().padLeft(2, "0")}";
-  }
-
-  Future<void> saveEmployee() async {
-    if (saving) return;
-
-    if (codeController.text.trim().isEmpty ||
-        nameController.text.trim().isEmpty ||
-        emailController.text.trim().isEmpty ||
-        selectedDepartmentId == null ||
-        (!widget.isEdit && passwordController.text.trim().isEmpty)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please fill the required fields"),
-          ),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      saving = true;
-    });
-
-    try {
-      final password = passwordController.text.trim();
-
-      if (widget.isEdit) {
-        await Api.updateEmployee(
-          id: widget.employee!["id"],
-          employeeCode: codeController.text.trim(),
-          name: nameController.text.trim(),
-          email: emailController.text.trim(),
-          phone: phoneController.text.trim(),
-          designation: designationController.text.trim(),
-          joiningDate: formatDate(joiningDate),
-          departmentId: selectedDepartmentId!,
-          password: password.isEmpty ? null : password,
-        );
-      } else {
-        await Api.addEmployee(
-          employeeCode: codeController.text.trim(),
-          name: nameController.text.trim(),
-          email: emailController.text.trim(),
-          phone: phoneController.text.trim(),
-          designation: designationController.text.trim(),
-          joiningDate: formatDate(joiningDate),
-          departmentId: selectedDepartmentId!,
-          password: password.isEmpty ? null : password,
-        );
-      }
-
-      // Return the result to showEmployeeForm.
-      // The parent will refresh only after this dialog is fully closed.
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          saving = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    codeController.dispose();
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    designationController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.isEdit ? "Edit Employee" : "Add Employee",
-      ),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: codeController,
-                enabled: !saving,
-                decoration: const InputDecoration(
-                  labelText: "Employee Code",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: nameController,
-                enabled: !saving,
-                decoration: const InputDecoration(
-                  labelText: "Name",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: emailController,
-                enabled: !saving,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: "Email",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: phoneController,
-                enabled: !saving,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: "Phone",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: designationController,
-                enabled: !saving,
-                decoration: const InputDecoration(
-                  labelText: "Designation",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: passwordController,
-                enabled: !saving,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: widget.isEdit
-                      ? "New Password (optional)"
-                      : "Password",
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              DropdownButtonFormField<int>(
-                value: selectedDepartmentId,
-                decoration: const InputDecoration(
-                  labelText: "Department",
-                  border: OutlineInputBorder(),
-                ),
-                items: widget.departments.map((department) {
-                  return DropdownMenuItem<int>(
-                    value: department["id"],
-                    child: Text(department["name"]),
-                  );
-                }).toList(),
-                onChanged: saving
-                    ? null
-                    : (value) {
-                        setState(() {
-                          selectedDepartmentId = value;
-                        });
-                      },
-              ),
-
-              const SizedBox(height: 8),
-
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Joining Date"),
-                subtitle: Text(formatDate(joiningDate)),
-                trailing: const Icon(Icons.calendar_today),
-                enabled: !saving,
-                onTap: saving
-                    ? null
-                    : () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: joiningDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2035),
-                        );
-
-                        if (picked != null && mounted) {
-                          setState(() {
-                            joiningDate = picked;
-                          });
-                        }
-                      },
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: saving
-              ? null
-              : () {
-                  Navigator.of(context).pop(false);
-                },
-          child: const Text("Cancel"),
-        ),
-
-        FilledButton(
-          onPressed: saving ? null : saveEmployee,
-          child: Text(
-            saving
-                ? "Saving..."
-                : (widget.isEdit ? "Save" : "Add"),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class EmployeesPage extends StatefulWidget {
   const EmployeesPage({super.key});
 
@@ -1420,6 +1072,27 @@ class _EmployeesPageState extends State<EmployeesPage> {
   Future<void> showEmployeeForm({Map<String, dynamic>? employee}) async {
     final isEdit = employee != null;
 
+    final codeController = TextEditingController(
+      text: employee?["employee_code"] ?? "",
+    );
+    final nameController = TextEditingController(
+      text: employee?["name"] ?? "",
+    );
+    final emailController = TextEditingController(
+      text: employee?["email"] ?? "",
+    );
+    final phoneController = TextEditingController(
+      text: employee?["phone"] ?? "",
+    );
+    final designationController = TextEditingController(
+      text: employee?["designation"] ?? "",
+    );
+    final passwordController = TextEditingController();
+
+    DateTime joiningDate = employee != null
+        ? DateTime.parse(employee["joining_date"])
+        : DateTime.now();
+
     List<dynamic> departments = [];
     int? selectedDepartmentId = employee?["department_id"];
 
@@ -1438,25 +1111,191 @@ class _EmployeesPageState extends State<EmployeesPage> {
       return;
     }
 
-    // The form is a separate StatefulWidget.
-    // This prevents the dialog's internal state from being
-    // destroyed/rebuilt together with the EmployeesPage.
-    final result = await showDialog<bool>(
+    String formatDate(DateTime date) {
+      return "${date.year.toString().padLeft(4, "0")}-"
+          "${date.month.toString().padLeft(2, "0")}-"
+          "${date.day.toString().padLeft(2, "0")}";
+    }
+
+    await showDialog(
       context: context,
       builder: (dialogContext) {
-        return _EmployeeFormDialog(
-          employee: employee,
-          isEdit: isEdit,
-          departments: departments,
-          initialDepartmentId: selectedDepartmentId,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? "Edit Employee" : "Add Employee"),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: codeController,
+                        decoration: const InputDecoration(
+                          labelText: "Employee Code",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: "Name",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: "Email",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: "Phone",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: designationController,
+                        decoration: const InputDecoration(
+                          labelText: "Designation",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: isEdit
+                              ? "New Password (optional)"
+                              : "Password",
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        value: selectedDepartmentId,
+                        decoration: const InputDecoration(
+                          labelText: "Department",
+                          border: OutlineInputBorder(),
+                        ),
+                        items: departments.map((department) {
+                          return DropdownMenuItem<int>(
+                            value: department["id"],
+                            child: Text(department["name"]),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setDialogState(
+                            () => selectedDepartmentId = value,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text("Joining Date"),
+                        subtitle: Text(formatDate(joiningDate)),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: joiningDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2035),
+                          );
+
+                          if (picked != null) {
+                            setDialogState(() => joiningDate = picked);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("Cancel"),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    if (codeController.text.trim().isEmpty ||
+                        nameController.text.trim().isEmpty ||
+                        emailController.text.trim().isEmpty ||
+                        selectedDepartmentId == null ||
+                        (!isEdit && passwordController.text.trim().isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Please fill the required fields",
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    try {
+                      if (isEdit) {
+                        await Api.updateEmployee(
+                          id: employee["id"],
+                          employeeCode: codeController.text.trim(),
+                          name: nameController.text.trim(),
+                          email: emailController.text.trim(),
+                          phone: phoneController.text.trim(),
+                          designation: designationController.text.trim(),
+                          joiningDate: formatDate(joiningDate),
+                          departmentId: selectedDepartmentId!,
+                          password: passwordController.text.trim().isEmpty
+                              ? null
+                              : passwordController.text.trim(),
+                        );
+                      } else {
+                        await Api.addEmployee(
+                          employeeCode: codeController.text.trim(),
+                          name: nameController.text.trim(),
+                          email: emailController.text.trim(),
+                          phone: phoneController.text.trim(),
+                          designation: designationController.text.trim(),
+                          joiningDate: formatDate(joiningDate),
+                          departmentId: selectedDepartmentId!,
+                          password: passwordController.text.trim().isEmpty
+                              ? null
+                              : passwordController.text.trim(),
+                        );
+                      }
+
+                      if (mounted) Navigator.pop(dialogContext);
+                      refresh();
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    }
+                  },
+                  child: Text(isEdit ? "Save" : "Add"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    // Only refresh after the dialog route has completely closed.
-    if (result == true && mounted) {
-      refresh();
-    }
+  
   }
 
   Future<void> deactivateEmployee(int id) async {
@@ -1537,7 +1376,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
       },
     );
 
-    passwordController.dispose();
+    
 
     if (password == null) return;
 
@@ -2254,8 +2093,10 @@ class _LeavesPageState extends State<LeavesPage> {
                         reason: reasonController.text.trim(),
                       );
 
-                      if (mounted) Navigator.pop(dialogContext);
-                      await refresh();
+                      if (mounted) {
+                         Navigator.pop(dialogContext);
+                        refresh();
+}
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -2273,7 +2114,6 @@ class _LeavesPageState extends State<LeavesPage> {
       },
     );
 
-    reasonController.dispose();
   }
 
   Future<void> approve(int id) async {
