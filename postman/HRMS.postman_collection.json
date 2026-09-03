@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "HRMS API",
+    "_postman_id": "simple-hrms-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"admin@hrms.com\",\"password\":\"admin123\"}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Employees",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/employees",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "employees"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Dashboard",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/dashboard",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "dashboard"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Check In",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/attendance/check-in?employee_id=1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "attendance",
+            "check-in"
+          ],
+          "query": [
+            {
+              "key": "employee_id",
+              "value": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Leaves",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/leaves",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "leaves"
+          ]
+        }
+      }
+    }
+  ]
+}
